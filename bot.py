@@ -1,4 +1,4 @@
-import sqlite3, datetime, random, telebot, time, traceback, requests
+import pymysql, datetime, random, telebot, time, traceback, requests
 from telebot import types
 from config import w_token
 from bs4 import BeautifulSoup
@@ -6,38 +6,37 @@ bot = telebot.TeleBot("2100982880:AAF2_wJXYjKngBWvKFU-J65yAbR6hrSwIHc")
 def timee():
 	global now, cur_date, cur_time
 	now = datetime.datetime.now()
-	cur_date = now.strftime("%d.%m.%Y")
+	cur_date = now.strftime("%Y-%m-%d")
 	cur_time = now.strftime("%H:%M:%S")
 	return now, cur_date, cur_time
 now, cur_date, cur_time = timee()
-def SQLite(m, res=False):
+def MySQL(m, res=False):
 	try:
 		user = m.chat.id
-		connect = sqlite3.connect('/home/pixart/Kaneka/history.db')
-		cursor = connect.cursor()
-		cursor.execute("INSERT INTO history(user, date, time, message) VALUES(?, ?, ?, ?);", (user, cur_date, cur_time, m.text))
-		connect.commit()
-	except Exception:
+		con = pymysql.connect(
+			host='127.0.0.1',
+			port=3306,
+			user='root',
+			password='',
+			database='kaneka',
+			cursorclass=pymysql.cursors.DictCursor
+		)
+		insert_table = "INSERT INTO history(user, date, time, message) VALUES(%s, '%s', '%s', '%s');" % (user, cur_date, cur_time, m.text)
+		with con.cursor() as cursor:
+			cursor.execute(insert_table)
+			con.commit()
+			con.close()
+	except Exception as err:
 		timee()
-		print("SQLite3 | Ошибка подключения.", cur_date, cur_time, '\nError:', traceback.format_exc())
+		print("MySQL | Ошибка подключения или ввода данных.", cur_date, cur_time, '\nError:', traceback.format_exc())
 def main():
 	@bot.message_handler(commands=['start'])
 	def welcome(m, res=False):
-		try:
-			user = m.chat.id
-			connect = sqlite3.connect('/home/pixart/Kaneka/history.db')
-			cursor = connect.cursor()
-			cursor.execute('''CREATE TABLE IF NOT EXISTS history(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, user TEXT, date TEXT, time TEXT, message TEXT)''')
-			connect.commit()
-			bot.reply_to(m, "Привет! Меня зовут Канека!\n/menu - вызовет меню бота.")
-			cursor.execute("INSERT INTO history(user, date, time, message) VALUES(?, ?, ?, ?);", (user, cur_date, cur_time, m.text))
-			connect.commit()
-		except Exception:
-			timee()
-			print("Welcome | Ошибка при приветствии или создании/вводе таблицы.", cur_date, cur_time, '\nError:', traceback.format_exc())
+		MySQL(m)
+		bot.reply_to(m, "Привет! Меня зовут Канека!\n/menu - вызовет меню бота.")
 	@bot.message_handler(commands=['menu'])
 	def menu(m, res=False):
-		SQLite(m)
+		MySQL(m)
 		markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
 		button1 = ["📓 История 🖊", "⌚️ Бэкапы 🕓"]
 		button2 = ["📷 Факты 🖼", "♂ Gachi ♂"]
@@ -54,7 +53,19 @@ def main():
 		bot.send_message(m.chat.id, 'Выберите пункт', reply_markup = markup)
 	@bot.message_handler(content_types='text')
 	def text(m, res=False):
-		SQLite(m)
+		user = m.chat.id
+		con = pymysql.connect(
+			host='127.0.0.1',
+			port=3306,
+			user='root',
+			password='',
+			database='kaneka',
+			cursorclass=pymysql.cursors.DictCursor
+		)
+		insert_table = "INSERT INTO history(user, date, time, message) VALUES(%s, '%s', '%s', '%s');" % (user, cur_date, cur_time, m.text)
+		with con.cursor() as cursor:
+			cursor.execute(insert_table)
+			con.commit()
 		if m.text == '⌚️ Бэкапы 🕓':
 			bot.send_message(m.chat.id, 'Извините, но эта функция пока недоступна.')
 		elif m.text == '⌚ Скоро... ⌚':
@@ -72,7 +83,7 @@ def main():
 				bot.send_message(m.chat.id, f"Погода в городе {city}.\n"
 				f"Температура: {cur_weather}\nВлажность: {humidity}\n"
 				f"Давление: {pressure} мм. рт. ст.\nСкорость ветра: {wind} м/c")
-			except Exception:
+			except Exception as err:
 				timee()
 				print('Погода | Ошибка...', cur_date, cur_time, '\nError:', traceback.format_exc())
 				bot.send_message(m.chat.id, 'Извините, ошибка вывода погоды, возможно вы не так ввели город.')
@@ -93,12 +104,13 @@ def main():
 				bot.send_message(m.chat.id, 'Извините, ошибка вывода информации.')
 		elif m.text == '📓 История 🖊':
 			try:
-				bot.send_message(m.chat.id, reply_markup=types.ReplyKeyboardRemove())
-				connect = sqlite3.connect('/home/pixart/Kaneka/history.db')
-				cursor = connect.cursor()
-				cursor.execute('SELECT * FROM history')
-				bot.send_message(m.chat.id, cursor.fetchall())
-			except Exception:
+				with con.cursor() as cursor:
+					select_all_rows = "SELECT * FROM `history` LIMIT 10;"
+					cursor.execute(select_all_rows)
+					rows = cursor.fetchall()
+					for row in rows:
+						bot.send_message(m.chat.id, "ID: " + str(row['id']) + "\nUserID: " + str(row['user']) + "\nDate: " + str(row['date']) + "\nTime: " + str(row['time']) + "\nMess:" + str(row['message']))
+			except Exception as err:
 				timee()
 				print('История | Ошибка вывода', cur_date, cur_time, '\nError:', traceback.format_exc())
 				bot.send_message(m.chat.id, 'Извините, ошибка вывода истории.')
@@ -139,19 +151,20 @@ def main():
 				Grivna = text_g.findAll("span", {"class" : "DFlfde SwHCTb"})
 				timee()
 				bot.send_message(m.chat.id, "Курсы на " + cur_date + " " + cur_time + "\n🇺🇸 Курс доллара: " + dollar[0].text + '\n🇪🇺 Курс евро: ' + Euro[0].text + '\n ₿  Курс биткойна: '  + BtC[0].text + '\n🪙 Курс монеро: ' + Monero[0].text + '\n🇺🇦 Курс гривны: ' + Grivna[0].text)
-			except Exception:
+			except Exception as err:
 				timee()
 				print("Курс валют | Ошибка вывода курса.", cur_date, cur_time, '\nError:', traceback.format_exc())
 				bot.send_message(m.chat.id, "Ошибка вывода курса валют.")
 		elif m.text == '🪙 Орел и решка ❓':
 			OaR = ['Решка.', 'Орёл.']
 			bot.send_message(m.chat.id, 'Вам выпал(а): ' + random.choice(OaR))
+		con.close()
 	if __name__ == '__main__':
 		bot.polling(none_stop=True, interval=0)
 while True:
 	try:
 		main()
-	except Exception:
+	except Exception as err:
 		timee()
 		print('Error! Restarting...', cur_date, cur_time, '\nError:', traceback.format_exc())
 		time.sleep(3)
