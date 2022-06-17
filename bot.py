@@ -12,7 +12,9 @@ def timee():
 now, cur_date, cur_time = timee()
 def MySQL(m, res=False):
 	try:
+		timee()
 		user = m.chat.id
+		global con
 		con = pymysql.connect(
 			host='127.0.0.1',
 			port=3306,
@@ -53,19 +55,7 @@ def main():
 		bot.send_message(m.chat.id, 'Выберите пункт', reply_markup = markup)
 	@bot.message_handler(content_types='text')
 	def text(m, res=False):
-		user = m.chat.id
-		con = pymysql.connect(
-			host='127.0.0.1',
-			port=3306,
-			user='root',
-			password='',
-			database='kaneka',
-			cursorclass=pymysql.cursors.DictCursor
-		)
-		insert_table = "INSERT INTO history(user, date, time, message) VALUES(%s, '%s', '%s', '%s');" % (user, cur_date, cur_time, m.text)
-		with con.cursor() as cursor:
-			cursor.execute(insert_table)
-			con.commit()
+		MySQL(m)
 		if m.text == '⌚️ Бэкапы 🕓':
 			bot.send_message(m.chat.id, 'Извините, но эта функция пока недоступна.')
 		elif m.text == '⌚ Скоро... ⌚':
@@ -105,19 +95,19 @@ def main():
 		elif m.text == '📓 История 🖊':
 			try:
 				with con.cursor() as cursor:
-					select_all_rows = "SELECT * FROM `history` LIMIT 10;"
+					select_all_rows = "SELECT * FROM `history` ORDER BY `id` DESC LIMIT 10;"
 					cursor.execute(select_all_rows)
 					rows = cursor.fetchall()
 					for row in rows:
-						bot.send_message(m.chat.id, "ID: " + str(row['id']) + "\nUserID: " + str(row['user']) + "\nDate: " + str(row['date']) + "\nTime: " + str(row['time']) + "\nMess:" + str(row['message']))
+						bot.send_message(m.chat.id, "ID: " + str(row['id']) + "\nUserID: " + str(row['user']) + "\nDate: " + str(row['date']) + "\nTime: " + str(row['time']) + "\nMess: " + str(row['message']))
 			except Exception as err:
 				timee()
 				print('История | Ошибка вывода', cur_date, cur_time, '\nError:', traceback.format_exc())
 				bot.send_message(m.chat.id, 'Извините, ошибка вывода истории.')
 		elif m.text == '💸 Пожертвовать 🙏':
-			bot.send_message(m.chat.id, 'Вы можете пожертвовать любую сумму на эти счета:\n\nСбербанк: 5469 4900 1720 4120\nТинькофф: 5536 9141 5526 5162\n\nМы очень благодарны вам!', reply_markup=types.ReplyKeyboardRemove())
+			bot.send_message(m.chat.id, 'Вы можете пожертвовать любую сумму на эти счета:\n\nСбербанк: 5469 4900 1720 4120\nТинькофф: 5536 9141 5526 5162\n\nМы очень благодарны вам!')
 		elif m.text == '📣 Обратная связь 🆘':
-			bot.send_message(m.chat.id, 'Здравствуйте! Канека создана начинающим разработчиком P1X∆RT при поддержке ParaNoid.\nНаписать разработчику: https://t.me/Pixartus', reply_markup=types.ReplyKeyboardRemove())
+			bot.send_message(m.chat.id, 'Здравствуйте! Канека создана начинающим разработчиком P1X∆RT при поддержке ParaNoid.\nНаписать разработчику: https://t.me/Pixartus')
 		elif m.text == '📷 Факты 🖼':
 			img_list = ['https://i.ucrazy.ru/files/pics/2017.02/interfakkt15.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt12.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt3.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt2.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt4.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt5.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt6.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt7.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt8.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt9.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt10.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt11.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt13.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt14.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt16.jpg', 'https://i.ucrazy.ru/files/pics/2017.02/interfakkt17.jpg']
 			bot.send_photo(m.chat.id, random.choice(img_list))
@@ -158,7 +148,6 @@ def main():
 		elif m.text == '🪙 Орел и решка ❓':
 			OaR = ['Решка.', 'Орёл.']
 			bot.send_message(m.chat.id, 'Вам выпал(а): ' + random.choice(OaR))
-		con.close()
 	if __name__ == '__main__':
 		bot.polling(none_stop=True, interval=0)
 while True:
@@ -170,5 +159,5 @@ while True:
 		time.sleep(3)
 		continue
 	else:
-		print("\nBot created by Pixart ;)")
+		print("\nBot created by Pixart :)")
 		break
