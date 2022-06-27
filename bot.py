@@ -35,8 +35,8 @@ def MySQL(m, res=False):
             cursorclass=pymysql.cursors.DictCursor
         )
         with con.cursor() as cur:
-            cur.execute("INSERT INTO `history`(user, date, time, message) VALUES(?, '?', '?', '?');" % (
-                user, cur_date, cur_time, m.text))
+            cur.execute("INSERT INTO `history`(user, date, time, message) VALUES(?, '?', '?', '?');",
+                        (user, cur_date, cur_time, m.text))
             con.commit()
     except Exception as err:
         timee()
